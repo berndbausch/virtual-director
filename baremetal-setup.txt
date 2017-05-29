@@ -11,7 +11,7 @@ What follows is based on
 # qemu-img create -f qcow2 -o preallocation=metadata overcloud-1.qcow2 60G 
 # virt-install --ram 6000 --vcpus 2 --os-variant rhel7 --noautoconsole --vnc 
                --disk path=/var/lib/libvirt/images/overcloud-1.qcow2,device=disk,bus=virtio,format=qcow2 
-               --network network:3O-external --network network:3O-provision 
+               --network network:3O-provision --network network:3O-external  
                --name overcloud-1 --cpu host --dry-run --print-xml > /tmp/overcloud-1.xml
 # virsh define /tmp/overcloud-1.xml
 (Reference: https://keithtenzer.com/2015/10/14/howto-openstack-deployment-using-tripleo-and-the-red-hat-openstack-director)
