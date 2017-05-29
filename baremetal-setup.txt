@@ -1,0 +1,42 @@
+Red Hat Director uses Ironic to deploy the overcloud on baremetal nodes. 
+Luckily, Ironic has drivers for virtual baremetal nodes: pxe-ssh, which
+has been deprecated and replaced by VirtualBMC in Ocata.
+
+My concern is Red Hat OpenStack version 8, which is based on Liberty.
+
+**On the VM host**, create virtual machines:
+# qemu-img create -f qcow2 -o preallocation=metadata overcloud-1.qcow2 60G 
+# virt-install --ram 6000 --vcpus 2 --os-variant rhel7 --noautoconsole --vnc 
+               --disk path=/var/lib/libvirt/images/overcloud-1.qcow2,device=disk,bus=virtio,format=qcow2 
+               --network network:3O-external --network network:3O-provision 
+               --name overcloud-1 --cpu host --dry-run --print-xml > /tmp/overcloud-1.xml
+# virsh define /tmp/overcloud-1.xml
+(Reference: https://keithtenzer.com/2015/10/14/howto-openstack-deployment-using-tripleo-and-the-red-hat-openstack-director)
+
+Don't start them up, but get their MAC addresses:
+# virsh domiflist overcloud-1|grep provision
+-          network    3O-provision virtio      52:54:00:2a:8c:74
+
+**On the undercloud**, ensure there is a baremetal flavor:
+# openstack flavor create --id auto --ram 4096 --disk 58 --vcpus 2 baremetal
+
+*On the undercloud**, create an ssh key and copy it to the VM host:
+# ssh-keygen -t rsa -b 2048 -f virtkey
+# ssh-copy-id -i virtkey root@VM_HOST
+
+**On the undercloud**, set up the nodes for Ironic
+First ensure that pxe_ssh is in the enabled_drivers in ironic.conf.
+# openstack image list
+Note the deploy kernel and ramdisk.
+# ironic node-create -d pxe_ssh -n overcloud-1 -i ssh_virt_type=virsh -i ssh_username=root -i ssh_key_filename=virtkey -i ssh_address=VM_HOST_IP -i deploy_kernel=KERNEL_UUID -i deploy_ramdisk=INITRAMFS_UUID
+
+Set nodes' MAC addresses obtained earlier. Use UUIDs; names don't work.
+# ironic port-create -n NODE_UUID -a MAC_ADDRESS
+
+Add the local boot property
+# ironic node-update overcloud-1 add properties/capabilities="boot_option:local"
+
+Make the nodes manageable, then inspect them
+# ironic node-set-provision-state overcloud-1 manage
+# ironic node-set-provision-state overcloud-1 inspect
+
