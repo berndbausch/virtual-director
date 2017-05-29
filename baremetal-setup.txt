@@ -1,8 +1,11 @@
 Red Hat Director uses Ironic to deploy the overcloud on baremetal nodes. 
 Luckily, Ironic has drivers for virtual baremetal nodes: pxe-ssh, which
-has been deprecated and replaced by VirtualBMC in Ocata.
+has been deprecated and replaced by VirtualBMC in Ocata
+(https://docs.openstack.org/developer/tripleo-docs/environments/virtualbmc.html).
 
 My concern is Red Hat OpenStack version 8, which is based on Liberty.
+
+What follows is based on 
 
 **On the VM host**, create virtual machines:
 # qemu-img create -f qcow2 -o preallocation=metadata overcloud-1.qcow2 60G 
