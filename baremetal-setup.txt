@@ -9,7 +9,7 @@ What follows is based on
 
 **On the VM host**, create virtual machines:
 # qemu-img create -f qcow2 -o preallocation=metadata overcloud-1.qcow2 60G 
-# virt-install --ram 6000 --vcpus 2 --os-variant rhel7 --noautoconsole --vnc 
+# virt-install --ram 6000 --vcpus 2 --os-variant rhel7 --noautoconsole --vnc,listen=0.0.0.0 
                --disk path=/var/lib/libvirt/images/overcloud-1.qcow2,device=disk,bus=virtio,format=qcow2 
                --network network:3O-provision --network network:3O-external  
                --name overcloud-1 --cpu host --dry-run --print-xml > /tmp/overcloud-1.xml
@@ -19,6 +19,24 @@ What follows is based on
 Don't start them up, but get their MAC addresses:
 # virsh domiflist overcloud-1|grep provision
 -          network    3O-provision virtio      52:54:00:2a:8c:74
+
+The default setup requires the provisioning network to be net0 in IPXE. 
+This probably means it should have an earlier PCI address than all other network
+interfaces. You can test this by booting up the VM and entering the IPXE shell:
+# virsh start overcloud-1 --paused
+# virsh vncdisplay overcloud-1
+Start a VNC client at this address, then resume the VM:
+# virsh resume overcloud-1
+Immediately go to the VNC console and hit ^B to enter the IPXE shell
+IPXE> show mac
+net0/mac:hex = 52:54:00:11:22:33
+If the MAC address doesn't refer to the address from the domiflist command,
+find out which interface has this address, e.g.
+IPXE> show net1/mac
+Then, on the undercloud, modify the IPXE boot interface in /httpboot/inspector.ipxe
+..... BOOTIF=${net1/mac}
+This only works if all other overcloud VMs have the same interface numbering.
+Alternatively, change the PCI address in the VM so that the provisioning interface becomes net0.
 
 **On the undercloud**, ensure there is a baremetal flavor:
 # openstack flavor create --id auto --ram 4096 --disk 58 --vcpus 2 baremetal
