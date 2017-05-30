@@ -4,8 +4,10 @@ has been deprecated and replaced by VirtualBMC in Ocata
 (https://docs.openstack.org/developer/tripleo-docs/environments/virtualbmc.html).
 
 My concern is Red Hat OpenStack version 8, which is based on Liberty.
+Consequently, I use the pxe_ssh driver.
 
-What follows is based on 
+What follows is based on section 2.5 of the Red Hat Baremetal Provisioning guide
+https://access.redhat.com/documentation/en-us/red_hat_openstack_platform/8/html/bare_metal_provisioning/configure_bare_metal_deployment#example_test_bare_metal_provisioning_with_ssh_and_virsh
 
 **On the VM host**, create virtual machines:
 # qemu-img create -f qcow2 -o preallocation=metadata overcloud-1.qcow2 60G 
@@ -20,6 +22,9 @@ Don't start them up, but get their MAC addresses:
 # virsh domiflist overcloud-1|grep provision
 -          network    3O-provision virtio      52:54:00:2a:8c:74
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Excursion: Solving the problem of incorrectly numbered network interfaces
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The default setup requires the provisioning network to be net0 in IPXE. 
 This probably means it should have an earlier PCI address than all other network
 interfaces. You can test this by booting up the VM and entering the IPXE shell:
@@ -37,6 +42,8 @@ Then, on the undercloud, modify the IPXE boot interface in /httpboot/inspector.i
 ..... BOOTIF=${net1/mac}
 This only works if all other overcloud VMs have the same interface numbering.
 Alternatively, change the PCI address in the VM so that the provisioning interface becomes net0.
+End of excursion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **On the undercloud**, ensure there is a baremetal flavor:
 # openstack flavor create --id auto --ram 4096 --disk 58 --vcpus 2 baremetal
