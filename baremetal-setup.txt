@@ -45,18 +45,24 @@ Alternatively, change the PCI address in the VM so that the provisioning interfa
 End of excursion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**On the undercloud**, ensure there is a baremetal flavor:
-# openstack flavor create --id auto --ram 4096 --disk 58 --vcpus 2 baremetal
+**On the undercloud**, ensure there is a baremetal flavor matching the VMs.
+First, delete any flavor named baremetal. A bug forces me to use the nova client.
+$ source ~/stackrc
+$ nova flavor-delete baremetal
+$ openstack flavor create --id auto --ram 4096 --disk 58 --vcpus 2 baremetal
 
 *On the undercloud**, create an ssh key and copy it to the VM host:
 # ssh-keygen -t rsa -b 2048 -f virtkey
 # ssh-copy-id -i virtkey root@VM_HOST
+Enable Ironic to read that key
+# cp virtkey /tmp
+# chmod 444 virtkey
 
 **On the undercloud**, set up the nodes for Ironic
 First ensure that pxe_ssh is in the enabled_drivers in ironic.conf.
 # openstack image list
 Note the deploy kernel and ramdisk.
-# ironic node-create -d pxe_ssh -n overcloud-1 -i ssh_virt_type=virsh -i ssh_username=root -i ssh_key_filename=virtkey -i ssh_address=VM_HOST_IP -i deploy_kernel=KERNEL_UUID -i deploy_ramdisk=INITRAMFS_UUID
+# ironic node-create -d pxe_ssh -n overcloud-1 -i ssh_virt_type=virsh -i ssh_username=root -i ssh_key_filename=/tmp/virtkey -i ssh_address=VM_HOST_IP -i deploy_kernel=KERNEL_UUID -i deploy_ramdisk=INITRAMFS_UUID
 
 Set nodes' MAC addresses obtained earlier. Use UUIDs; names don't work.
 # ironic port-create -n NODE_UUID -a MAC_ADDRESS
@@ -64,7 +70,25 @@ Set nodes' MAC addresses obtained earlier. Use UUIDs; names don't work.
 Add the local boot property
 # ironic node-update overcloud-1 add properties/capabilities="boot_option:local"
 
-Make the nodes manageable, then inspect them
+Make the nodes manageable:
 # ironic node-set-provision-state overcloud-1 manage
+Then inspect them.
+When I tried to do this with the default stackrc, the process failed with a
+message in the inspector log:
+"Unauthorized: User IRONIC-UUID is unauthorized for tenant SERVICE-UUID"
+My solution is to enable version 3 Keystone.
+# cat <<EOF >stackrcv3
+unset OS_TENANT_NAME
+export OS_AUTH_URL="http://192.168.126.100:5000/v3"
+export OS_CLOUDNAME="undercloud"
+export OS_IDENTITY_API_VERSION="3"
+export OS_IMAGE_API_VERSION="1"
+export OS_NO_CACHE="True"
+export OS_PASSWORD="1d24057d93989e18a3913a57f7dc4eca62fe0774"
+export OS_PROJECT_DOMAIN_NAME="Default"
+export OS_PROJECT_NAME="admin"
+export OS_USERNAME="admin"
+export OS_USER_DOMAIN_NAME="Default"
+EOF
+# source stackrcv3
 # ironic node-set-provision-state overcloud-1 inspect
-
