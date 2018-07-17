@@ -1,0 +1,98 @@
+compute_0.xml:  <memory unit='KiB'>8388608</memory>
+control_0.xml:  <memory unit='KiB'>8388608</memory>
+undercloud.xml:  <memory unit='KiB'>12582912</memory>
+
+compute_0.xml:  <vcpu placement='static'>2</vcpu>
+control_0.xml:  <vcpu placement='static'>2</vcpu>
+undercloud.xml:  <vcpu placement='static'>6</vcpu>
+
+compute_0.xml:  <cpu mode='host-passthrough' check='none'/>
+control_0.xml:  <cpu mode='host-passthrough' check='none'/>
+undercloud.xml:  <cpu mode='host-model' check='partial'>
+
+NICs:
+Compute
+    <interface type='bridge'>
+      <source bridge='brovc'/>
+      <model type='virtio'/>
+    </interface>
+Controller
+    <interface type='bridge'>
+      <source bridge='brovc'/>
+      <model type='virtio'/>
+    </interface>
+Undercloud
+    <interface type='bridge'>
+      <source bridge='brext'/>
+      <model type='virtio'/>
+    </interface>
+    <interface type='bridge'>
+      <source bridge='brovc'/>
+      <model type='virtio'/>
+    </interface>
+
+[stack@jupiter ~]$ virsh pool-list
+ Name                 State      Autostart
+-------------------------------------------
+ oooq_pool            active     yes
+
+[stack@jupiter ~]$ virsh vol-list
+error: command 'vol-list' requires <pool> option
+[stack@jupiter ~]$ virsh vol-list oooq_pool
+ Name                 Path
+------------------------------------------------------------------------------
+ compute_0.qcow2      /home/stack/pool/compute_0.qcow2
+ control_0.qcow2      /home/stack/pool/control_0.qcow2
+ undercloud.qcow2     /home/stack/pool/undercloud.qcow2
+
+$ brctl show
+bridge name     bridge id               STP enabled     interfaces
+brext           8000.525400347364       yes             brext-nic
+                                                        tap0
+brovc           8000.525400dc1d77       yes             brovc-nic
+                                                        tap1
+virbr0          8000.525400855b4d       yes             virbr0-nic
+
+[stack@jupiter ~]$ sudo virsh net-dumpxml external
+<network>
+  <name>external</name>
+  <uuid>6ab02b8d-715b-493a-beda-de9a5e139b86</uuid>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='brext' stp='on' delay='0'/>
+  <mac address='52:54:00:34:73:64'/>
+  <ip address='192.168.23.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.23.10' end='192.168.23.50'/>
+    </dhcp>
+  </ip>
+</network>
+
+[stack@jupiter ~]$ sudo virsh net-dumpxml overcloud
+<network>
+  <name>overcloud</name>
+  <uuid>ca1e0f3d-5a9d-4973-bb47-718d9469e56e</uuid>
+  <bridge name='brovc' stp='on' delay='0'/>
+  <mac address='52:54:00:dc:1d:77'/>
+</network>
+
+[stack@jupiter ~]$ virsh domiflist undercloud
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+-          bridge     brext      virtio      00:1f:74:d7:63:c8
+-          bridge     brovc      virtio      00:1f:74:d7:63:c6
+
+[stack@jupiter ~]$ virsh domiflist control_0
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap1       bridge     brovc      virtio      00:a7:1d:c0:88:7e
+
+[stack@jupiter ~]$ virsh domiflist compute_0
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+tap0       bridge     brovc      virtio      00:a7:1d:c0:88:82
+
+

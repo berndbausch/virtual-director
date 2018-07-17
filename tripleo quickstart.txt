@@ -1,0 +1,69 @@
+Usual 3O workflow from https://www.youtube.com/watch?v=ziosLhUoh9s
+- Install undercloud (not that difficult)
+- run validation scripts
+- Ironic: 
+  node introspection, collecting many facts, optionally performance data.
+- Deployment information --> config files
+  In particular network info
+- Deploy controller
+  Deploy computes
+  Machine determined by flavor-matching or tagging
+  os-net-config
+  configuration done by Puppet modules on nodes
+  7 puppet steps - DB, Message, ...., Pacemaker
+- Scale up (more computes and other nodes)
+- Set up HA
+
+
+Needed:
+- quickstart host. No need for power. Recommend VM. Ansible and other software
+  will be installed there. Install Centos.
+  Needs a root and a non-root account, here named "stack".
+- VIRTHOST. Should have 32GB memory; 16GB is a bit tight. Install minimal
+  Centos. 
+  This host runs at least three VMs: Undercloud, Overcloud Controller and
+  Overcloud Compute.
+  Needs a root and a non-root account, here named "stack".
+
+Quickstart config options: .quickstart/tripleo-quickstart/config
+Older images - try http://artifacts.ci.centos.org/rdo/images
+To build images: http://git.openstack.org/cgit/openstack/tripleo-quickstart-extras/tree/roles/build-images/README.md
+
+
+On the quickstart host:
+
+- Copy public SSH keys of root and stack to VIRTHOST root and stack. 
+- Get the quickstart script curl -O https://raw.githubusercontent.com/openstack/tripleo-quickstart/master/quickstart.sh
+- Install required software
+  $ bash quickstart.sh --install-deps
+- Provision the VIRTHOST and start the Undercloud
+  Optionally, add -R <releasename> for older releases.
+  $ bash quickstart.sh -e docker_registry_namespace_used=tripleomaster -e container_build_id=current-tripleo jupiter
+- In case of errors, use the log _quickstart.log
+- Enter the Undercloud:
+  $ ssh -F /home/stack/.quickstart/ssh.config.ansible undercloud
+
+Most of the time is spent download images. This is done in
+/home/stack/.quickstart/tripleo-quickstart/roles/fetch-images/tasks/fetch.yml.
+Alternative: Copy images to a local web server, then set
+	undercloud_image_url
+	overcloud_image_url
+	ipa_image_url
+
+On the Undercloud:
+
+Further instructions start at 
+http://tripleo.org/basic_deployment/basic_deployment_cli.html#upload-images
+- $ source stackrc
+- Add overcloud images to Glance
+  $ openstack overcloud image upload
+- review the instackenv.json file. It describes a controller and a compute.
+- register nodes
+  $ openstack overcloud node import instackenv.json
+  after which the nodes are in the manageable state. 
+- Introspection
+  
+  
+
+
+
