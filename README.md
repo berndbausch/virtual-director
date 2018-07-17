@@ -1,2 +1,2 @@
 # virtual-director
-Red Hat Director v8 setup on virtual machines
+Red Hat Director v10 setup on virtual machines
